@@ -44,12 +44,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
 // Keep the standalone Gemini endpoint available on the same HTTP/Socket.IO server.
-// In production, `/` is reserved for the React application below.
-if (process.env.NODE_ENV !== "production") {
-  app.get("/", (req, res) => {
-    res.send("Hello World!");
-  });
-}
 app.post("/chat", chat);
 
 if (process.env.NODE_ENV === "production") {
