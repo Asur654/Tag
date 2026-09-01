@@ -19,7 +19,8 @@ dotenv.config();
 const PORT = process.env.PORT;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+// Vite writes the production bundle next to this server during the build.
+const frontendDistPath = path.resolve(__dirname, "../public");
 
 app.use(express.json());
 app.use(cookieParser());
