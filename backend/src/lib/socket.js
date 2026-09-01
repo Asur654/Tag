@@ -12,7 +12,10 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   "http://127.0.0.1:5175",
-];
+  "https://tag-tsbe.onrender.com",
+  process.env.CLIENT_URL,
+  process.env.RENDER_EXTERNAL_URL,
+].filter(Boolean);
 
 const io = new Server(server, {
   cors: {
