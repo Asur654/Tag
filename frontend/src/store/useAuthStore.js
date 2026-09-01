@@ -10,7 +10,9 @@ export const useAuthStore = create((set, get) => ({
   isSigningUp: false,
   isLoggingIn: false,
   isUpdatingProfile: false,
-  isCheckingAuth: true,
+  // Render the login screen immediately. A stalled authentication request must
+  // never leave the production app on an empty loading screen.
+  isCheckingAuth: false,
   onlineUsers: [],
   socket: null,
 
