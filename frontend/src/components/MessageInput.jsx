@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Loader2, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, isBotLoading, selectedUser } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -31,6 +31,7 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+    if (selectedUser?.isBot && isBotLoading) return;
 
     try {
       await sendMessage({
@@ -74,7 +75,11 @@ const MessageInput = () => {
           <input
             type="text"
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
-            placeholder="Type a message..."
+            placeholder={
+              selectedUser?.isBot && isBotLoading
+                ? "Tag Bot is thinking..."
+                : "Type a message..."
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -84,6 +89,7 @@ const MessageInput = () => {
             className="hidden"
             ref={fileInputRef}
             onChange={handleImageChange}
+            disabled={selectedUser?.isBot && isBotLoading}
           />
 
           <button
@@ -91,6 +97,7 @@ const MessageInput = () => {
             className={`hidden sm:flex btn btn-circle
                      ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
             onClick={() => fileInputRef.current?.click()}
+            disabled={selectedUser?.isBot && isBotLoading}
           >
             <Image size={20} />
           </button>
@@ -98,9 +105,13 @@ const MessageInput = () => {
         <button
           type="submit"
           className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          disabled={(!text.trim() && !imagePreview) || (selectedUser?.isBot && isBotLoading)}
         >
-          <Send size={22} />
+          {selectedUser?.isBot && isBotLoading ? (
+            <Loader2 className="size-5 animate-spin text-primary" />
+          ) : (
+            <Send size={22} />
+          )}
         </button>
       </form>
     </div>

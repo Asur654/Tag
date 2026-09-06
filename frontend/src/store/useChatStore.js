@@ -9,6 +9,7 @@ export const useChatStore = create((set, get) => ({
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+  isBotLoading: false,
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -23,7 +24,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   getMessages: async (userId) => {
-    set({ isMessagesLoading: true });
+    set({ isMessagesLoading: true, isBotLoading: false });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
       set({ messages: res.data });
@@ -41,6 +42,7 @@ export const useChatStore = create((set, get) => ({
         messages: state.messages.some((m) => String(m._id) === String(res.data._id))
           ? state.messages
           : [...state.messages, res.data],
+        ...(selectedUser.isBot ? { isBotLoading: true } : {}),
       }));
 
       // Socket.IO delivers replies immediately. This fallback also picks up a
@@ -49,40 +51,53 @@ export const useChatStore = create((set, get) => ({
         void get().waitForBotReply(selectedUser._id, res.data.createdAt);
       }
     } catch (error) {
-      toast.error(error.response.data.message);
+      if (selectedUser?.isBot) {
+        set({ isBotLoading: false });
+      }
+      toast.error(error?.response?.data?.message || "Failed to send message");
     }
   },
 
   waitForBotReply: async (botUserId, sentAt) => {
     const sentTime = new Date(sentAt).getTime();
 
-    for (let attempt = 0; attempt < 25; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      for (let attempt = 0; attempt < 25; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const { selectedUser, messages } = get();
-      if (String(selectedUser?._id) !== String(botUserId)) return;
+        const { selectedUser, messages } = get();
+        if (String(selectedUser?._id) !== String(botUserId)) return;
 
-      const replyAlreadyReceived = messages.some(
-        (message) =>
-          String(message.senderId) === String(botUserId) &&
-          new Date(message.createdAt).getTime() > sentTime
-      );
-      if (replyAlreadyReceived) return;
-
-      try {
-        const res = await axiosInstance.get(`/messages/${botUserId}`);
-        const hasReply = res.data.some(
+        const replyAlreadyReceived = messages.some(
           (message) =>
             String(message.senderId) === String(botUserId) &&
             new Date(message.createdAt).getTime() > sentTime
         );
-
-        if (hasReply) {
-          set({ messages: res.data });
+        if (replyAlreadyReceived) {
+          set({ isBotLoading: false });
           return;
         }
-      } catch {
-        // The next short retry handles a temporary connection interruption.
+
+        try {
+          const res = await axiosInstance.get(`/messages/${botUserId}`);
+          const hasReply = res.data.some(
+            (message) =>
+              String(message.senderId) === String(botUserId) &&
+              new Date(message.createdAt).getTime() > sentTime
+          );
+
+          if (hasReply) {
+            set({ messages: res.data, isBotLoading: false });
+            return;
+          }
+        } catch {
+          // The next short retry handles a temporary connection interruption.
+        }
+      }
+    } finally {
+      const { selectedUser } = get();
+      if (String(selectedUser?._id) === String(botUserId)) {
+        set({ isBotLoading: false });
       }
     }
   },
@@ -107,9 +122,18 @@ export const useChatStore = create((set, get) => ({
           (message) => String(message._id) === String(newMessage._id)
         );
 
-        if (alreadyExists) return state;
+        const isFromBot =
+          state.selectedUser?.isBot &&
+          String(newMessage.senderId) === String(state.selectedUser._id);
 
-        return { messages: [...state.messages, newMessage] };
+        if (alreadyExists) {
+          return isFromBot ? { isBotLoading: false } : state;
+        }
+
+        return {
+          messages: [...state.messages, newMessage],
+          ...(isFromBot ? { isBotLoading: false } : {}),
+        };
       });
     });
   },
@@ -119,5 +143,5 @@ export const useChatStore = create((set, get) => ({
     if (socket) socket.off("newMessage");
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setSelectedUser: (selectedUser) => set({ selectedUser, isBotLoading: false }),
 }));

@@ -1,5 +1,6 @@
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -12,6 +13,7 @@ const ChatContainer = () => {
     messages,
     getMessages,
     isMessagesLoading,
+    isBotLoading,
     selectedUser,
     subscribeToMessages,
     unsubscribeFromMessages,
@@ -28,10 +30,10 @@ const ChatContainer = () => {
   }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
 
   useEffect(() => {
-    if (messageEndRef.current && messages) {
+    if (messageEndRef.current && (messages || isBotLoading)) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, isBotLoading]);
 
   if (isMessagesLoading) {
     return (
@@ -83,6 +85,28 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
+
+        {selectedUser?.isBot && isBotLoading && (
+          <div className="chat chat-start" ref={messageEndRef}>
+            <div className="chat-image avatar">
+              <div className="size-10 rounded-full border">
+                <img
+                  src={selectedUser.profilePic || "/avatar.png"}
+                  alt={selectedUser.fullName || "Tag Bot"}
+                />
+              </div>
+            </div>
+            <div className="chat-header mb-1">
+              <span className="text-xs opacity-50 ml-1">
+                {selectedUser.fullName || "Tag Bot"}
+              </span>
+            </div>
+            <div className="chat-bubble flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin text-primary" />
+              <span className="text-sm opacity-80">Tag Bot is thinking...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <MessageInput />
